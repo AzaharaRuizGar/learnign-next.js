@@ -1,0 +1,1553 @@
+<#setting locale="es_ES">
+<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+	<#-- Implementation for Single Instance accounts -->
+	<#if !subsidiary??>
+		<#assign subsidiary = companyinformation + {
+			"logo@url": companyinformation.logoUrl,
+			"federalidnumber": companyinformation.employerid,
+			"country": {
+				"internalid": companyinformation.country
+			},
+			"mainaddress": {
+				"addrphone": companyinformation.phone
+			}
+		}>
+		<#if record.custbody_alf_cfg?has_content>
+			<#assign subsidiary = subsidiary + {
+				"custrecord_alf_sub_logo_width": record.custbody_alf_cfg.custrecord_alf_cfg_si_logo_w,
+				"custrecord_alf_sub_logo_height": record.custbody_alf_cfg.custrecord_alf_cfg_si_logo_h
+			}>
+		</#if>
+	</#if>
+	<#assign webSale = "Venta Web">
+	<#assign directSale = "Compra Directa">
+	<#assign directSaleFour = "Compra directa a 4 años">
+	<#assign directSaleFive = "Compra directa a 5 años">
+	<#assign directSaleSix = "Compra directa a 6 años">
+	<#-- Computation of footer height -->
+	<#assign footerHeight = 78>
+	<#if subsidiary.custrecord_alf_share_capital?length != 0 || subsidiary.custrecord_alf_sic_code?length != 0>
+		<#assign footerHeight = footerHeight + 13>
+	</#if>
+	<#if subsidiary.custrecord_alf_managing_director?length != 0>
+		<#assign footerHeight = footerHeight + 13>
+	</#if>
+	<#if subsidiary.custrecord_alf_other_legal_info?length != 0>
+		<#assign footerHeight = footerHeight + 13>
+	</#if>
+	<#assign footerHeight = footerHeight?string + "pt">
+	<#-- Configuration assignments -->
+	<#assign primaryBackground = '#E9E9E9'>
+	<#assign primaryText = '#000000'>
+	<#assign footerBackground = '#E9E9E9'>
+	<#assign footerText = '#000000'>
+	<#assign secondaryBackground = '#FBFBFB'>
+	<#assign printDiscountAsColumn = false>
+	<#if record.custbody_alf_cfg?has_content>
+		<#if record.custbody_alf_cfg.custrecord_alf_cfg_primary_color?has_content>
+			<#assign primaryBackground = record.custbody_alf_cfg.custrecord_alf_cfg_primary_color>
+		</#if>
+		<#assign primaryText = record.custbody_alf_cfg.custrecord_alf_cfg_primary_text>
+		<#if record.custbody_alf_cfg.custrecord_alf_cfg_footer_color?has_content>
+			<#assign footerBackground = record.custbody_alf_cfg.custrecord_alf_cfg_footer_color>
+		</#if>
+		<#assign footerText = record.custbody_alf_cfg.custrecord_alf_cfg_footer_text>
+		<#if record.custbody_alf_cfg.custrecord_alf_cfg_secondary_color?has_content>
+			<#assign secondaryBackground = record.custbody_alf_cfg.custrecord_alf_cfg_secondary_color>
+		</#if>
+		<#assign printDiscountAsColumn = record.custbody_alf_cfg.custrecord_alf_cfg_discount_in_column>
+	</#if>
+	<#-- Translation Collection -->
+	<#assign tc = nstranslation.load({
+		"collections":[{
+			"alias": "default",
+			"collection": (Translation_collection?has_content)?then(Translation_collection.collection,"custcollection_alf_transaction_template"),
+			"keys": ["PAGING","TITLE","HEADER_TOTAL","HEADER_SHIPTO","HEADER_BILLTO","HEADER_DATE","HEADER_CUST_INF","HEADER_METHOD_OF_PAYMENT","HEADER_ISSUER","HEADER_ISSUER_INF","HEADER_CUST_NUMBER","HEADER_VAT_REG_NUMBER","HEADER_REG_NUMBER","HEADER_REG_NUMBER_DE","HEADER_REG_NUMBER_FR","HEADER_LATE_PAYMENT","HEADER_REG_NUMBER_NL","HEADER_PURCHASE_ORDER","HEADER_PAYMENT_REFERENCE","HEADER_PAYMENT_INFORMATION","HEADER_PAYMENT_TERMS","HEADER_SALES_ORDER","HEADER_CURRENCY","HEADER_PROJECT","HEADER_DUE_DATE","LINEHEADER_LINE", "LINEHEADER_ITEM", "LINEHEADER_DESCRIPTION", "LINEHEADER_QTY", "LINEHEADER_UNIT", "LINEHEADER_RATE", "LINEHEADER_AMTEXCLVAT", "LINEHEADER_VAT", "LINEHEADER_VATAMT", "LINEHEADER_DISCOUNT", "LINEHEADER_TOTALAMT",
+				"SUBTOTAL_SHIPPING", "SUBTOTAL_INVOICEDISCOUNT", "SUBTOTAL_PAYMENTDISCOUNTAMOUNT", "SUBTOTAL_PAYMENTDISCOUNTDATE", "SUBTOTAL_TOTALEXCLVAT", "SUBTOTAL_VATTOTALINBASE", "SUBTOTAL_VATTOTAL", "SUBTOTAL_TOTAL", "SUBTOTAL_HAVEPREPAID", "SUBTOTAL_AMOUNTDUE",
+				"VATSUMMARY_TITLE", "VATSUMMARY_PERCENT", "VATSUMMARY_NETAMOUNT", "VATSUMMARY_VATAMOUNT", "VATSUMMARY_AMOUNTINCLVAT","FOOTER_MANAGING_DIRECTOR","FOOTER_SIC_CODE","FOOTER_SHARE_CAPITAL","FOOTER_PHONE","FOOTER_FAX"],
+			"locale": .locale
+		}]
+	})>
+	<#assign localizedTC = nstranslation.selectLocale({
+		"handle": tc,
+		"locale": .locale
+	})>
+	<#function translate x>
+		<#assign keyLength = (x?length > 29)?then(29, x?length)>
+		<#assign customLabel = record.custbody_alf_cust_inv_translations['custrecord_' + x?substring(0, keyLength) + '@label']>
+		<#if customLabel?length != 0 && !customLabel?contains("%EMPTY%")>
+			<#return customLabel?contains("%DUPL%")?then(customLabel[0..customLabel?index_of("%DUPL%")-1],customLabel)>
+		</#if>
+		<#return localizedTC.default[x]>
+	</#function>
+	<pdf>
+		<head>
+			<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+			<#if .locale == "zh_CN">
+				<link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+			<#elseif .locale == "zh_TW">
+				<link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+			<#elseif .locale == "ja_JP">
+				<link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+			<#elseif .locale == "ko_KR">
+				<link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+			<#elseif .locale == "th_TH">
+				<link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+			</#if>
+			<macrolist>
+				<macro id="nlheader">
+					<#if record.custbody_inn_printout_for_org == true>
+  						<#assign dunninglang = record.custbody_inn_organisation_customer.custentity_inn_dunningtemplatelang>
+					<#else>
+  						<#assign dunninglang = record.entity.custentity_inn_dunningtemplatelang>
+					</#if>
+					<table class="header" style="width: 100%;" table-layout="fixed">
+						<tr>
+							<td width="33.3%">&nbsp;</td>
+							<td width="33.3%">&nbsp;</td>
+							<td width="33.3%">&nbsp;</td>
+						</tr>
+						<tr>
+							<#assign maxLogoWidth = 75>
+							<#assign maxLogoHeight = 75>
+							<#assign logoWidth = maxLogoWidth>
+							<#assign logoHeight = maxLogoHeight>
+							<#if subsidiary.custrecord_alf_sub_logo_width?has_content && subsidiary.custrecord_alf_sub_logo_height?has_content>
+                              	<#assign maxLogoWidth = 217>
+								<#assign maxLogoHeight = 110>
+								<#assign logoWidth = subsidiary.custrecord_alf_sub_logo_width>
+								<#assign logoHeight = subsidiary.custrecord_alf_sub_logo_height>
+                                <#assign ratio = min([maxLogoWidth / logoWidth, maxLogoHeight / logoHeight])>
+                                <#if ratio lt 1>
+                                    <#assign logoWidth = logoWidth * ratio>
+                                    <#assign logoHeight = logoHeight * ratio>
+                                </#if>
+							</#if>
+
+
+
+                            <td align="left" class="logo">
+								<#assign logoUrl = subsidiary.logo@url?has_content?then(subsidiary.logo@url, companyinformation.logoUrl)>
+								<#if logoUrl?length != 0>
+                                  	<img  src="${logoUrl}" style="height: ${logoHeight}px;width:${logoWidth}px;"/>
+								</#if>
+							</td>
+							<td colspan="2" align="right">
+								<#assign title = 'TITLE'>
+								<b>
+									<span class="titleSmall" style="color:#28ccb4;">
+										<#if dunninglang == "CAT">PRESSUPOST I CONTRACTE
+										<#elseif dunninglang == "ESP">PRESUPUESTO Y CONTRATO
+                                        <#elseif dunninglang == "Italian">BILANCIO E CONTRATTO
+										<#else>${record@title}
+										</#if>
+									</span>
+									<span class="titleSmall" style="color:#28ccb4;"> #${record.tranid}</span>
+								</b>
+								<p style = "align: right">
+									<#assign header_date = 'HEADER_DATE'>
+                                      <span class="label" style="color:#28ccb4; font-size: 12px;">
+                                        <#if dunninglang == "CAT">Data
+                                        <#elseif dunninglang == "ESP">Fecha
+                                        <#elseif dunninglang == "Italian">Data
+                                        <#else>${translate(header_date)}</#if>
+                                      </span>
+                                      <span class="body" style="color:#28ccb4; font-size: 12px;">${record.trandate}</span>
+								</p>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="3" align="right">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="duplicate titleSmall">${record.custbody_alf_tx_print_mark}</td>
+							<td colspan="2">&nbsp;</td>
+						</tr>
+					</table>
+				</macro>
+				<macro id="nlfooter">
+					<table class="footer" style="width: 100%; margin: 0 -0.5in 0 -0.5in; padding: 20px 0.5in 0.4in 0.5in">
+						<#assign bankDetailsRowSpan = 1>
+						<#if subsidiary.custrecord_alf_share_capital?length != 0 || subsidiary.custrecord_alf_sic_code?length != 0>
+							<#assign bankDetailsRowSpan = bankDetailsRowSpan + 1>
+						</#if>
+						<#if subsidiary.custrecord_alf_managing_director?length != 0>
+							<#assign bankDetailsRowSpan = bankDetailsRowSpan + 1>
+						</#if>
+						<tr style="padding-bottom: 3px">
+							<td width="33.3%">
+								<span class="textBig uppercase">${subsidiary.legalname}</span>
+								<br/>
+								<span class="textBig">${subsidiary.federalidnumber}</span>
+								<br/>
+								${record.custbody_alf_subsidiary_address}
+							</td>
+							<td width="33.3%">
+								<#assign footer_phone = 'FOOTER_PHONE'>
+								<#if subsidiary.mainaddress.addrphone?has_content>${translate(footer_phone)} ${subsidiary.mainaddress.addrphone}<br /></#if>
+									<#assign footer_fax = 'FOOTER_FAX'>
+								<#if subsidiary.fax?has_content>${translate(footer_fax)} ${subsidiary.fax}<br /></#if> ${subsidiary.email}<br />${record.subsidiary.url}
+							</td>
+							<td rowspan="${bankDetailsRowSpan}" width="33.3%">
+								<#-- hardcoded per alf_mop_types list -->
+								<#if record.custbody_alf_mop_print_on_invoice.internalid == "1">${record.custbody_alf_bank_det_to_print}
+								<#elseif record.custbody_alf_mop_print_on_invoice.internalid == "2"> ${record.custbody_alf_bank_det_dd_details} </#if>
+							</td>
+						</tr>
+						<#if subsidiary.custrecord_alf_share_capital?length != 0 || subsidiary.custrecord_alf_sic_code?length != 0>
+							<tr>
+								<td colspan="2">
+									<#if subsidiary.custrecord_alf_share_capital?length != 0>
+										<#assign FOOTER_SHARE_CAPITAL = 'FOOTER_SHARE_CAPITAL'>${translate(FOOTER_SHARE_CAPITAL)} ${subsidiary.custrecord_alf_share_capital}
+									</#if>
+								</td>
+								<td>
+									<#if subsidiary.custrecord_alf_sic_code?length != 0>
+										<#assign FOOTER_SIC_CODE = 'FOOTER_SIC_CODE'>${translate(FOOTER_SIC_CODE)} ${subsidiary.custrecord_alf_sic_code}
+									</#if>
+								</td>
+							</tr>
+						</#if>
+						<#if subsidiary.custrecord_alf_managing_director?length != 0>
+							<tr>
+								<#assign FOOTER_MANAGING_DIRECTOR = 'FOOTER_MANAGING_DIRECTOR'>
+								<td colspan="3">
+									${translate(FOOTER_MANAGING_DIRECTOR)} ${subsidiary.custrecord_alf_managing_director}
+								</td>
+							</tr>
+						</#if>
+						<#if subsidiary.custrecord_alf_other_legal_info?length != 0>
+							<tr>
+								<td colspan="3" style="font-style: italic">
+									${subsidiary.custrecord_alf_other_legal_info}
+								</td>
+							</tr>
+						</#if>
+						<tr style="margin: 0 20px">
+							<#assign TITLE = 'TITLE'>
+							<td colspan="2">
+								&nbsp;
+							</td>
+							<#assign pg1 = "$" + "{pageNumber}">
+							<#assign pg2 = "<pagenumber/>">
+							<#assign pg3 = "$" + "{totalPages}">
+							<#assign pg4 = "<totalpages/>">
+							<#assign paginationText = "PAGING">
+							<#if dunninglang == "CAT">
+								<#assign paginationText = "Pàgina $" + "{pageNumber} de $" + "{totalPages}">
+							<#elseif dunninglang == "ESP">
+								<#assign paginationText = "Página $" + "{pageNumber} de $" + "{totalPages}">
+							</#if>
+							<td style="padding: 0; vertical-align: middle">
+								<p align="right" class="body" text-align="right">
+									${paginationText?replace(pg1, pg2)?replace(pg3, pg4)}
+								</p>
+							</td>
+						</tr>
+					</table>
+				</macro>
+			</macrolist>
+			<style type="text/css">* {
+				<#if .locale == "zh_CN">
+					font-family: NotoSans, NotoSansCJKsc, sans-serif;
+				<#elseif .locale == "zh_TW">
+					font-family: NotoSans, NotoSansCJKtc, sans-serif;
+				<#elseif .locale == "ja_JP">
+					font-family: NotoSans, NotoSansCJKjp, sans-serif;
+				<#elseif .locale == "ko_KR">
+					font-family: NotoSans, NotoSansCJKkr, sans-serif;
+				<#elseif .locale == "th_TH">
+					font-family: NotoSans, NotoSansThai, sans-serif;
+				<#else>
+					font-family: NotoSans, NotoSansArabic, sans-serif;
+				</#if>
+				}
+				table {
+					table-layout: fixed;
+				}
+				table.itemtable {
+					table-layout: auto;
+				}
+				th, td {
+					/*border: 1px solid black; /* for layout debugging */
+				}
+				table.header td {
+					padding: 0px;
+				}
+				table.addresstable td {
+					padding: 0px;
+				}
+				table.footer td {
+					padding: 1px 5px 2px 0;
+				}
+				table.itemtable th, table.itemtable td {
+					padding: 8px 3px;
+				}
+				table.infobox th {
+					padding: 4px 0 4px 5px;
+					margin-bottom: 3px;
+				}
+				table.infobox td {
+					padding: 1px 0 3px 5px;
+				}
+				table.paymentinfo th {
+					padding: 4px 0 4px 5px;
+					margin-bottom: 3px;
+				}
+				table.paymentinfo td {
+					padding: 1px 0 3px 5px;
+				}
+				table.paymentinfo, table.subtotal, table.vatsummary {
+					page-break-inside: avoid;
+				}
+				table.subtotal th {
+					vertical-align: middle;
+				}
+				table.subtotal th, table.subtotal td {
+					padding: 1px 5px 3px 0;
+				}
+				table.vatsummary th, table.vatsummary td {
+					padding: 4px 3px;
+				}
+				td.logo img {
+					padding-right: 1px;
+				}
+				td.duplicate {
+					align: center;
+					vertical-align: middle;
+					color: #AEAEAE;
+					text-transform: uppercase;
+				}
+				tr.totalrow {
+					padding: 7px 3px 7px 0;
+				}
+				td.addressheader {
+					padding-right: 10px;
+				}
+				td.address {
+					padding-top: 2px;
+					padding-right: 10px;
+				}
+				td.totalboxheader {
+					padding: 3px 3px 0 3px;
+					font-size: 12pt;
+				}
+				td.totalbox {
+					padding: 8px 3px 3px 3px;
+					align: right;
+				}
+				table.itemtable td, table.vatsummary td {
+					border-bottom: 1px solid ${primaryBackground};
+				}
+				.title {
+					font-size: 21pt;
+					line-height: 38px;
+				}
+				.titleSmall, td.totalbox {
+					font-size: 14pt;
+					line-height: 20px;
+				}
+				.body, td.address, table.infobox td, table.subtotal td {
+					font-size: 8pt;
+					line-height: 14px;
+				}
+				.bodySmall, table.itemtable td, table.vatsummary td, table.footer td {
+					font-size: 6pt;
+					line-height: 10px;
+				}
+				.label, td.addressheader, td.totalboxheader, table.subtotal th {
+					font-size: 8pt;
+					line-height: 14px;
+					font-weight: bold;
+				}
+				.fontRegular {
+					font-size: 8pt;
+				}
+				.labelSmall, table.infobox th, table.itemtable th, table.vatsummary th, table.paymentinfo th {
+					font-size: 7pt;
+					line-height: 9px;
+					font-weight: bold;
+				}
+				.textBig {
+					font-size: 9pt;
+					line-height: 14px;
+				}
+				.labelBig, tr.totalrow th, tr.totalrow td {
+					font-size: 9pt;
+					line-height: 14px;
+					font-weight: bold;
+				}
+				.zebra {
+					background-color: ${secondaryBackground};
+				}
+				.itemGroup {
+					color: #707070;
+					font-size: x-small;
+					line-height: 7px;
+					font-style: italic;
+				}
+				td.totalboxheader, td.totalbox, table.infobox th, table.itemtable th, table.vatsummary th, tr.totalrow, table.paymentinfo th {
+					background-color: ${primaryBackground};
+					color: ${primaryText};
+				}
+				table.footer {
+					background-color: ${footerBackground};
+				}
+				table.footer td {
+					color: ${footerText};
+				}
+				hr {
+					width: 100%;
+					color: ${primaryBackground};
+					background-color: ${primaryBackground};
+					height: 1px;
+					margin: 0;
+				}
+				#tdShipTo {
+					padding-left: 10px;
+				}
+				.uppercase {
+					text-transform: uppercase;
+				}
+				.pageBrakeBefore {
+					page-break-before: always;
+				}
+              table.pageBrakeBefore{
+                font-size: 7pt;
+                table-layout: fixed;
+                border-collapse: collapse;
+                 width: 100%;
+              }
+              table.pageBrakeBefore tr td {
+                line-height: 8px;
+              }
+              table.pageBrakeBefore tr td.first-column {
+                padding-right: 25px;
+                width: 50%;
+              }
+              table.pageBrakeBefore tr td.second-column {
+                padding-left: 25px;
+                width: 50%;
+              }
+
+              table.pageBrakeBefore tr td p {
+                line-height: 125%;
+              }
+			</style>
+		</head>
+		<body header="nlheader" header-height="100px" footer="nlfooter" footer-height="${footerHeight}" padding="0.3in 0.5in 0.4in 0.5in" size="A4">
+			<#function isTrue x>
+				<#return (x?is_boolean && x) || (x?is_string && x == "T")>
+			</#function>
+			<#function notZero x>
+				<#return x?has_content && x != 0>
+			</#function>
+			<#function min coll>
+				<#local minimum = coll[0]>
+				<#list coll as c>
+					<#if c < minimum>
+						<#local minimum = c>
+					</#if>
+				</#list>
+				<#return minimum>
+			</#function>
+			<#function roundNum num decimalPlaces>
+				<#if num?is_number>
+					<#if (decimalPlaces > 0 )>
+						<#assign num2 = num />
+						<#assign decPlaces = 1 />
+						<#assign decPlacesDivide = 1 />
+						<#list 1..decimalPlaces as count>
+							<#assign decPlaces = decPlaces * 10/>
+							<#assign decPlacesDivide = decPlacesDivide * 0.1/>
+						</#list>
+					</#if>
+					<#assign roundedNum = (((num2*decPlaces)?round) * decPlacesDivide ) />
+					<#return roundedNum>
+				<#else>
+					<#return num >
+				</#if>
+			</#function>
+			<#function num x>
+				<#if x == 0>
+					<#return ''>
+				</#if>
+				<#local result = nsformat_rate(x)?replace("^.*?((\\d.*\\d)|(\\d)).*$","$1","r")>
+				<#local result = result?remove_ending('.00')?remove_ending(',00')>
+				<#return result>
+			</#function>
+			<#function amt x options={}>
+				<#if x?string == "">
+					<#return x>
+				<#elseif x?string?contains("%")>
+					<#return nsformat_currency(x * 100)?string?replace('[^\\.,٬٫0-9\\-\\(\\)\\u00A0]','','r') + "%">
+				</#if>
+				<#if options.round!true>
+					<#local x = roundNum(x, 2)>
+				</#if>
+				<#return nsformat_currency(x)?string?replace('[^\\.,٬٫0-9\\-\\(\\)\\u00A0]','','r')>
+			</#function>
+			<#function keepAfterHash str>
+				<#return str?keep_after("#")>
+			</#function>
+			<#function calculateVATsums list taxrate>
+				<#local amount = 0>
+				<#local taxamount = 0>
+				<#list list as item>
+					<#local itemtaxamount = item.taxamount>
+					<#if !itemtaxamount?has_content>
+						<#local itemtaxamount = item.tax1amt>
+					</#if>
+					<#local amount = amount + item.amount>
+					<#local taxamount = taxamount + itemtaxamount>
+				</#list>
+				<#return {
+					"taxrate": taxrate?string,
+					"taxbasis": amount,
+					"taxamount": taxamount
+				}>
+			</#function>
+			<#function computeVATsummary list>
+				<#local result=[]>
+				<#local processed_tax_rates=[]>
+				<#--Invoice discount-->
+				<#if notZero(record.discounttotal)>
+					<#list list as item>
+						<#local itemtaxrate = item.taxrate>
+						<#if !itemtaxrate?has_content>
+							<#local itemtaxrate = item.taxrate1>
+						</#if>
+						<#if itemtaxrate?has_content>
+							<#local discount_ratio = item.amount / record.subtotal>
+							<#local discount_for_item = {
+								"taxrate": itemtaxrate,
+								"amount": discount_ratio * record.discounttotal,
+								"taxamount": discount_ratio * itemtaxrate * record.discounttotal
+							}>
+							<#local list = list + [discount_for_item]>
+						</#if>
+					</#list>
+				</#if>
+				<#--Shipping-->
+				<#local shippingcost = record.shippingcost>
+				<#if notZero(record.handlingcost)>
+					<#local shippingcost = shippingcost - record.handlingcost>
+				</#if>
+				<#if notZero(shippingcost) && record.shippingtax1rate?has_content>
+					<#local shipping = {
+						"taxrate": nsformat_percent(record.shippingtax1rate)?string,
+						"amount": shippingcost,
+						"taxamount": (record.shippingtax1rate?number / 100) * shippingcost
+					}>
+					<#local list = list + [shipping]>
+				</#if>
+				<#--Handling-->
+				<#if notZero(record.handlingcost) && record.handlingtax1rate?has_content && record.handlingtax1rate != 'A'>
+					<#local handling = {
+						"taxrate": nsformat_percent(record.handlingtax1rate)?string,
+						"amount": record.handlingcost,
+						"taxamount": (record.handlingtax1rate?number / 100) * record.handlingcost
+					}>
+					<#local list = list + [handling]>
+				</#if>
+				<#list list as item>
+					<#local itemtaxrate = item.taxrate>
+					<#if !itemtaxrate?has_content>
+						<#local itemtaxrate = item.taxrate1>
+					</#if>
+					<#if itemtaxrate?has_content && !processed_tax_rates?seq_contains(itemtaxrate?string)>
+						<#local items = []>
+						<#list list as item2>
+							<#local item2taxrate = item2.taxrate>
+							<#if !item2taxrate?has_content>
+								<#local item2taxrate = item2.taxrate1>
+							</#if>
+							<#if item2taxrate?string == itemtaxrate?string>
+								<#local items = items + [item2]>
+							</#if>
+						</#list>
+						<#local result = result + [calculateVATsums(items, itemtaxrate)]>
+						<#local processed_tax_rates = processed_tax_rates + [itemtaxrate?string]>
+					</#if>
+				</#list>
+				<#return result>
+			</#function>
+			<#function isLeastOneItemHasEnablePrintItemName items>
+				<#list items as item>
+					<#if isTrue(item.custcol_alf_print_item_name)>
+						<#return true>
+					</#if>
+				</#list>
+				<#return false>
+			</#function>
+			<#function isLeastOneItemDiscount items>
+				<#list items as item>
+					<#if item.itemtype == "Discount">
+						<#return true>
+					</#if>
+				</#list>
+				<#return false>
+			</#function>
+			<#function getAddressList>
+				<#if record.custbody_inn_printout_for_org == true>
+					<#assign dunninglang = record.custbody_inn_organisation_customer.custentity_inn_dunningtemplatelang>
+				<#else>
+					<#assign dunninglang = record.entity.custentity_inn_dunningtemplatelang>
+				</#if>
+				<#assign header_shipto_label = translate('HEADER_SHIPTO')>
+				<#if dunninglang == "CAT">
+					<#assign header_shipto_label = "Adreça d'enviament">
+				<#elseif dunninglang == "ESP">
+					<#assign header_shipto_label = "Dirección de envío">
+                <#elseif dunninglang == "Italian">
+                  <#assign header_shipto_label = "Indirizzo di spedizione">
+				</#if>
+				<#assign header_billto_label = translate('HEADER_BILLTO')>
+				<#if dunninglang == "CAT">
+					<#assign header_billto_label = "Client">
+				<#elseif dunninglang == "ESP">
+					<#assign header_billto_label = "Cliente">
+                <#elseif dunninglang == "Italian">
+                  <#assign header_billto_label = "Cliente">
+				</#if>
+				<#if record.custbody_inn_printout_for_org == false>
+					<#assign billaddresstoprint = record.billaddress>
+					<#assign shipaddresstoprint = record.shipaddress>
+				<#else>
+					<#assign billaddresstoprint = record.custbody_inn_cus_org_addr>
+					<#assign shipaddresstoprint = record.custbody_inn_cus_org_addr>
+				</#if>
+				<#assign addresses = [{"headerClass" : "addressheader", "headerText" : header_billto_label, "bodyClass" : "address", "bodyText" : billaddresstoprint},
+					{"headerClass" : "addressheader", "headerText" : header_shipto_label, "bodyClass" : "address", "bodyText" : shipaddresstoprint},
+					{"headerClass" : "totalboxheader", "headerText" : translate('HEADER_TOTAL'), "bodyClass" : "totalbox", "bodyText" : record.total}]>
+				<#if isTrue(subsidiary.custrecord_alf_sub_print_bill_to_right)>
+					<#return addresses?reverse>
+				</#if>
+				<#return addresses>
+			</#function>
+			<#assign addressesList = getAddressList()>
+			<table class="header" style="width: 100%;">
+				<tr>
+					<td width="33.3%">
+						<span class="titleSmall">${subsidiary.legalname}</span>
+						<br />
+						<span class="body">${subsidiary.mainaddress_text}</span>
+						<br />
+						<span class="body">${subsidiary.custrecord_phone}</span>
+					</td>
+				</tr>
+			</table>
+			<table class="addresstable" style="width: 100%; margin-top: 40px;">
+				<tr>
+					<td class="${addressesList[1].bodyClass}" style="margin-left: 0px; padding: 7px 7px 7px 0;" id="<#if isTrue(subsidiary.custrecord_alf_sub_print_bill_to_right)>tdShipTo</#if>">
+						<#if (record.shipaddress?length != 0)>
+							<b>${addressesList[1].headerText}</b>
+							<br/>
+							<#if (record.shipaddress?length != 0)>
+								${addressesList[1].bodyText}
+							</#if>
+							<#if !isTrue(subsidiary.custrecord_alf_sub_print_bill_to_right)>
+								<br/>
+								<#if record.custbody_inn_printout_for_org == false>
+									${record.entity.custentity_sii_id}
+									<br/>${record.entity.phone}
+									<br/>${record.entity.email}
+								<#else>
+									${record.custbody_inn_organisation_customer.custentity_sii_id}
+									<br/>${record.custbody_inn_organisation_customer.phone}
+									<br/>${record.custbody_inn_organisation_customer.email}
+								</#if>
+							</#if>
+						<#else>
+							&nbsp;
+						</#if>
+					</td>
+					<td class="${addressesList[2].bodyClass}" style= "border: 1px solid gray; padding: 7px;">
+						<b>${addressesList[2].headerText}</b>
+						<br/>
+						${addressesList[2].bodyText}
+						<#if isTrue(subsidiary.custrecord_alf_sub_print_bill_to_right)>
+							<br/>
+							<#if record.custbody_inn_printout_for_org == false>${record.entity.custentity_sii_id}
+								<br/>${record.entity.phone}
+								<br/>${record.entity.email}
+							<#else>${record.custbody_inn_organisation_customer.custentity_sii_id}
+								<br/>${record.custbody_inn_organisation_customer.phone}
+								<br/>${record.custbody_inn_organisation_customer.email}
+							</#if>
+						</#if>
+					</td>
+				</tr>
+			</table>
+			<#if record.item?has_content>
+				<#assign line_number = 1>
+				<table class="itemtable" style="width: 100%; margin-top: 30px;">
+					<#assign printItemColumn = isLeastOneItemHasEnablePrintItemName(record.item)>
+					<#assign printDiscountAsColumn = printDiscountAsColumn && isLeastOneItemDiscount(record.item)>
+					<!-- start items -->
+					<#assign levelCounter = 0>
+					<#list record.item as item>
+						<#assign isGroup = item.itemtype == "Group">
+						<#assign isEndOfGroup = item.itemtype == "EndGroup">
+						<#if item_index==0>
+							<thead>
+								<tr>
+									<#assign LINEHEADER_LINE = "LINEHEADER_LINE">
+									<th align="left" width="9%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Codi
+											<#elseif dunninglang == "ESP">C&oacute;digo
+                                            <#elseif dunninglang == "Italian">Codice
+											<#else>Code
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_DESCRIPTION = "LINEHEADER_DESCRIPTION">
+									<#assign descriptionColumnWidth = 20>
+									<#if !printItemColumn>
+										<#assign descriptionColumnWidth += 6>
+									</#if>
+									<#if !printDiscountAsColumn>
+										<#assign descriptionColumnWidth += 9>
+									</#if>
+									<th align="left" width="${descriptionColumnWidth}%">
+										<p text-align="left">
+											<#if dunninglang == "CAT">Descripci&oacute;
+											<#elseif dunninglang == "ESP">Descripci&oacute;n
+                                            <#elseif dunninglang == "Italian">Descrizione
+											<#else>${translate(LINEHEADER_DESCRIPTION)}
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_QTY = "LINEHEADER_QTY">
+									<th align="right" width="8.5%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Unitats
+											<#elseif dunninglang == "ESP">Unidades
+                                            <#elseif dunninglang == "Italian">Unità
+											<#else>${translate(LINEHEADER_QTY)}
+											</#if>
+										</p>
+									</th>
+
+                                    <#assign LINEHEADER_PRICE_BASE = "LINEHEADER_PRICE_BASE">
+									<th align="right" width="8.5%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Preu Base
+											<#elseif dunninglang == "ESP">Precio Base
+                                            <#elseif dunninglang == "Italian">Prezzo base
+											<#else>${translate(LINEHEADER_PRICE_BASE)}
+											</#if>
+										</p>
+									</th>
+                                          <#assign LINEHEADER_DISCOUNT = "LINEHEADER_DISCOUNT">
+									<th align="right" width="8.5%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Descompte
+											<#elseif dunninglang == "ESP">Descuento
+                                            <#elseif dunninglang == "Italian">Sconto
+											<#else>${translate(LINEHEADER_DISCOUNT)}
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_RATE = "LINEHEADER_RATE">
+									<th align="right" width="8%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Preu
+											<#elseif dunninglang == "ESP">Precio
+                                            <#elseif dunninglang == "Italian">Prezzo
+											<#else>${translate(LINEHEADER_RATE)}
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_AMTEXCLVAT = "LINEHEADER_AMTEXCLVAT">
+									<th align="right" width="11%">
+										<p text-align="right">
+											<#if dunninglang == "CAT">Import Net
+											<#elseif dunninglang == "ESP">Importe Neto
+                                            <#elseif dunninglang == "Italian">Importo netto
+											<#else>${translate(LINEHEADER_AMTEXCLVAT)}
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_VAT = "LINEHEADER_VAT">
+									<th align="right" width="6%">
+										<p text-align="right">
+											<#if dunninglang == "CAT" || dunninglang == "ESP">% IVA
+											<#else>${translate(LINEHEADER_VAT)}
+											</#if>
+										</p>
+									</th>
+									<#assign LINEHEADER_TOTALAMT = "LINEHEADER_TOTALAMT">
+									<th align="right" width="11%">
+										<p text-align="right">
+											<#if dunninglang == "CAT" || dunninglang == "ESP">Total
+                                            <#elseif dunninglang == "Italian">Totale
+											<#else>${translate(LINEHEADER_TOTALAMT)}
+											</#if>
+										</p>
+									</th>
+								</tr>
+							</thead>
+						</#if>
+						<#if !isEndOfGroup && levelCounter < 2 && (!printDiscountAsColumn || item.itemtype!="Discount") && (!isTrue(item.custcol_inn_do_not_print_if_zero) || notZero(item.amount))>
+							<tr class="<#if (line_number % 2 == 0 && levelCounter == 0)>zebra</#if><#if (levelCounter > 0)> itemGroup</#if>">
+								<#if (levelCounter > 0 && !isGroup)>
+									<td align="left">
+										<p text-align="left">&nbsp;</p>
+									</td>
+									<td align="left">
+										<p text-align="left">-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${item.custcol_inn_item_display_name}<#if item.description?length != 0>&nbsp;-&nbsp;${item.description}</#if></p>
+									</td>
+								<#else>
+									<td align="left">
+										<p text-align="left">${item.custcol_inn_item_id}</p>
+									</td>
+									<td align="left">
+										<p text-align="left">${item.custcol_inn_item_display_name}<#if item.custcolisbnline?length != 0> - Ref. ${item.custcolisbnline}</#if></p>
+									</td>
+								</#if>
+								<td align="right">
+									<p text-align="right">${num(item.quantity)}</p>
+								</td>
+
+                                  <!-- Precio Base -->
+                                  <td align="right">
+									<#if (isGroup)>
+                                      <#assign basePrice = 0>
+										<#list record.item as x>
+                                          <#if x?index gte item?index>
+                                              <#if x.itemtype == "EndGroup">
+                                                  <#break>
+                                              </#if>
+                                              <#if x.itemtype != "Discount">
+                                                  <#assign basePrice = basePrice + x.custcol_su_price_base + x.custcol_su_cust_discount_amount>
+                                              </#if>
+                                           </#if>
+										</#list>
+										<p text-align="right">${basePrice?string.number}</p>
+									<#else>
+										<#assign basePriceNoGroup = item.custcol_su_price_base + item.custcol_su_cust_discount_amount>
+										<p text-align="right">${basePriceNoGroup?string.number}</p>
+									</#if>
+								</td>
+
+                                <!-- Descuento -->
+                                  <td align="right">
+									<#if (isGroup)>
+										<#assign discount = 0>
+										<#list record.item as x>
+											<#if x?index gte item?index>
+												<#if x.itemtype == "EndGroup">
+													<#break>
+												</#if>
+												<#if x.itemtype != "Discount">
+													<#assign discount = 0>
+													<#if x.custcol_custom_discount != 0>
+														<#assign discount = x.custcol_custom_discount>
+													<#elseif x.custcol_su_discount != 0>
+														<#assign discount = x.custcol_su_discount>
+													</#if>
+												</#if>
+											</#if>
+										</#list>
+										<#if discount != 0>
+											<p text-align="right">${discount}</p>
+										</#if>
+									<#else>
+										<#if item.custcol_custom_discount != 0>
+											<p text-align="right">${item.custcol_custom_discount}</p>
+										<#elseif item.custcol_su_discount != 0>
+											<p text-align="right">${item.custcol_su_discount}</p>
+										</#if>
+									</#if>
+								</td>
+
+								<td align="right">
+									<#if (isGroup)>
+										<#assign rate = 0>
+										<#list record.item[(item_index + 1)..record.item?size - 1] as x>
+											<#if x.itemtype == "EndGroup">
+												<#break>
+											</#if>
+											<#if x.itemtype != "Discount">
+												<#assign rate = rate + x.rate>
+											</#if>
+										</#list>
+										<p text-align="right">${amt(rate)}</p>
+									<#else>
+										<p text-align="right">${amt(item.rate)}</p>
+									</#if>
+								</td>
+								<td align="right">
+									<#if (isGroup)>
+										<#assign amount = 0>
+										<#list record.item[(item_index + 1)..record.item?size - 1] as x>
+											<#if x.itemtype == "EndGroup">
+												<#break>
+											</#if>
+											<#if x.itemtype != "Discount">
+												<#assign amount = amount + x.amount>
+											</#if>
+										</#list>
+										<p text-align="right">${amt(amount)}</p>
+									<#else>
+										<p text-align="right">${amt(item.amount)}</p>
+									</#if>
+								</td>
+								<td align="right">
+									<p text-align="right">${item.taxrate}${item.taxrate1}</p>
+								</td>
+								<td align="right">
+									<#if (isGroup)>
+										<#assign grossamt = 0>
+										<#list record.item[(item_index + 1)..record.item?size - 1] as x>
+											<#if x.itemtype == "EndGroup">
+												<#break>
+											</#if>
+											<#if x.itemtype != "Discount">
+												<#assign grossamt = grossamt + x.grossamt>
+											</#if>
+										</#list>
+										<p text-align="right">${amt(grossamt)}</p>
+									<#else>
+										<p text-align="right">${amt(item.grossamt)}</p>
+									</#if>
+								</td>
+							</tr>
+							<#assign line_number++>
+						</#if>
+						<#if (isGroup)>
+							<#assign levelCounter = levelCounter + 1>
+						<#elseif isEndOfGroup>
+							<#assign levelCounter = levelCounter - 1>
+						</#if>
+					</#list>
+					<!-- end items -->
+				</table>
+			</#if>
+			<table style="width: 100%; margin-top: 40px; margin-bottom: 20px">
+				<tr>
+					<td style="padding: 0">
+						<#assign exchrate = 1>
+						<#if record.currency.symbol?length != 0>
+							<#assign vatcurrencysymbol = record.currency.symbol>
+						<#else>
+							<#assign vatcurrencysymbol = companyinformation.displaysymbol>
+						</#if>
+						<#if isTrue(subsidiary.custrecord_alf_vat_summary_in_base_curr)>
+							<#assign exchrate = record.exchangerate>
+							<#assign vatcurrencysymbol = record.custbody_alf_invoice_subsidcurrency.symbol>
+						</#if>
+						<#assign VATSUMMARY_TITLE = "VATSUMMARY_TITLE">
+						<p class="label" style="margin-bottom: 5px;">
+							<#if dunninglang == "CAT">
+								Resum d'impostos
+							<#elseif dunninglang == "ESP">
+								Resumen de impuestos
+                            <#elseif dunninglang == "Italian">Panoramica fiscale
+							<#else>
+								${translate(VATSUMMARY_TITLE)}
+							</#if> (${vatcurrencysymbol})
+						</p>
+						<table class="vatsummary" style="width: 100%; margin-bottom: 10px;">
+							<#if record.taxsummary?has_content>
+								<#assign taxdatalist = record.taxsummary>
+							<#else>
+								<#assign taxdatalist = computeVATsummary(record.item)>
+							</#if>
+							<#assign line_number = 1>
+							<#assign taxdatalist_numbered = []>
+							<#list taxdatalist as tax>
+								<#assign taxdatalist_numbered += [tax + {"taxratenumber" : tax.taxrate?replace('[^\\.,٬0-9]','','r')?number}]>
+							</#list>
+							<#list taxdatalist_numbered?sort_by("taxratenumber")?reverse as tax>
+								<#if tax_index==0>
+									<tr>
+										<#assign VATSUMMARY_PERCENT = "VATSUMMARY_PERCENT">
+										<th width="15%">
+											<p align="right" text-align="right">
+												<#if dunninglang == "CAT" || dunninglang == "ESP">% IVA
+                                                <#elseif dunninglang == "Italian">% IVA
+												<#else>${translate(VATSUMMARY_PERCENT)}
+												</#if>
+											</p>
+										</th>
+										<#assign VATSUMMARY_NETAMOUNT = "VATSUMMARY_NETAMOUNT">
+										<th>
+											<p align="right" text-align="right">
+												<#if dunninglang == "CAT">Import Net
+												<#elseif dunninglang == "ESP">Importe Neto
+                                                <#elseif dunninglang == "Italian">Importo netto
+												<#else>${translate(VATSUMMARY_NETAMOUNT)}
+												</#if>
+											</p>
+										</th>
+										<#assign VATSUMMARY_VATAMOUNT = "VATSUMMARY_VATAMOUNT">
+										<th>
+											<p align="right" text-align="right">
+												<#if dunninglang == "CAT">Import IVA
+												<#elseif dunninglang == "ESP">Importe IVA
+                                                <#elseif dunninglang == "Italian">Importo iva
+												<#else>${translate(VATSUMMARY_VATAMOUNT)}
+												</#if>
+											</p>
+										</th>
+										<#assign VATSUMMARY_AMOUNTINCLVAT = "VATSUMMARY_AMOUNTINCLVAT">
+										<th>
+											<p align="right" text-align="right">
+												<#if dunninglang == "CAT">Import amb IVA
+												<#elseif dunninglang == "ESP">Importe con IVA
+                                                <#elseif dunninglang == "Italian">importo con IVA
+												<#else>${translate(VATSUMMARY_AMOUNTINCLVAT)}
+												</#if>
+											</p>
+										</th>
+									</tr>
+								</#if>
+								<tr class="<#if line_number % 2 == 0>zebra</#if>">
+									<td>
+										<p align="right" text-align="right">${tax.taxrate}</p>
+									</td>
+									<td>
+										<p align="right" text-align="right">${amt(exchrate * tax.taxbasis)}</p>
+									</td>
+									<td>
+										<p align="right" text-align="right">${amt(exchrate * tax.taxamount)}</p>
+									</td>
+									<td>
+										<p align="right" text-align="right">${amt(exchrate * (tax.taxbasis + tax.taxamount))}</p>
+									</td>
+								</tr>
+								<#assign line_number++></#list>
+							</table>
+							<p class="body">${record.custbody_alf_tax_compliance_text}</p>
+						</td>
+						<td style="width: 10px;">&nbsp;</td>
+						<td style="padding: 0">
+						<table class="subtotal" style="width: 100%;">
+							<tr>
+								<th scope="row" style="padding: 0" width="70%">&nbsp;</th>
+								<td style="padding: 0" width="30%">&nbsp;</td>
+							</tr>
+							<#assign total_excl_vat = record.total - record.taxtotal>
+							<#if notZero(record.discounttotal) || notZero(record.shippingcost)>
+								<tr>
+									<#assign SUBTOTAL_TOTAL = "SUBTOTAL_TOTAL">
+									<th align="right" scope="row">${translate(SUBTOTAL_TOTAL)}</th>
+									<td align="right">${amt(record.subtotal)}</td>
+								</tr>
+							</#if>
+							<#if notZero(record.discounttotal)>
+								<tr style="padding-bottom: 3px">
+									<#assign SUBTOTAL_INVOICEDISCOUNT = "SUBTOTAL_INVOICEDISCOUNT">
+									<th align="right" scope="row">${translate(SUBTOTAL_INVOICEDISCOUNT)}</th>
+									<td align="right">${amt(record.discounttotal)}</td>
+								</tr>
+							</#if>
+							<#if notZero(record.shippingcost)>
+								<tr style="padding-bottom: 3px">
+									<#assign SUBTOTAL_SHIPPING = "SUBTOTAL_SHIPPING">
+									<th align="right" scope="row">
+										<#if dunninglang == "CAT">Enviament
+										<#elseif dunninglang == "ESP">Env&iacute;o
+                                        <#elseif dunninglang == "Italian">Spedizione
+										<#else>${translate(SUBTOTAL_SHIPPING)}
+										</#if>
+									</th>
+									<td align="right">${amt(record.shippingcost)}</td>
+								</tr>
+							</#if>
+							<tr>
+								<#assign SUBTOTAL_TOTALEXCLVAT = "SUBTOTAL_TOTALEXCLVAT">
+								<th align="right" scope="row">
+									<#if dunninglang == "CAT" || dunninglang == "ESP">Total excl. IVA
+                                    <#elseif dunninglang == "Italian">Totale escl. I.V.A.
+									<#else>${translate(SUBTOTAL_TOTALEXCLVAT)}
+									</#if>
+								</th>
+								<td align="right" class="label">${amt(total_excl_vat)}</td>
+							</tr>
+							<#assign showExchangeRate = !isTrue(record.isbasecurrency) && record.taxtotal != 0>
+							<tr>
+								<th align="right" scope="row">
+									<p text-align="right">
+										<#if showExchangeRate>
+											<#assign opt = {"round": false}>
+											<#assign SUBTOTAL_VATTOTALINBASE = "SUBTOTAL_VATTOTALINBASE">
+											<#assign curr = "$" + "{curr}">${translate(SUBTOTAL_VATTOTALINBASE)?replace(curr, record.custbody_alf_invoice_subsidcurrency.symbol)}
+											<br />
+											(1 ${record.currency.symbol} = ${amt(record.exchangerate, opt)} ${record.custbody_alf_invoice_subsidcurrency.symbol})
+										<#else>
+											<#assign SUBTOTAL_VATTOTAL = "SUBTOTAL_VATTOTAL">
+											<#if dunninglang == "CAT" || dunninglang == "ESP">Total IVA
+                                            <#elseif dunninglang == "Italian">Totale IVA
+											<#else>${translate(SUBTOTAL_VATTOTAL)}
+											</#if>
+										</#if>
+									</p>
+								</th>
+								<td align="right">
+									<p text-align="right">
+										<#if showExchangeRate>${amt(record.taxtotal * record.exchangerate)} ${record.custbody_alf_invoice_subsidcurrency.symbol}
+										<#else>${amt(record.taxtotal)}
+										</#if>
+									</p>
+								</td>
+							</tr>
+							<#assign havePrepayed = record.amountremaining?string != "" && record.total?string != record.amountremaining?string>
+							<#if havePrepayed>
+								<tr>
+									<#assign HEADER_TOTAL = "HEADER_TOTAL">
+									<th align="right" scope="row"><span class="uppercase">${translate(HEADER_TOTAL)}</span></th>
+									<td align="right">${amt(record.total)}</td>
+								</tr>
+							</#if>
+							<tr class="totalrow" style="margin-top: 3px">
+								<#assign SUBTOTAL_AMOUNTDUE = "SUBTOTAL_AMOUNTDUE">
+								<#assign HEADER_TOTAL = "HEADER_TOTAL">
+								<th align="right" scope="row">
+									<span class="uppercase">${translate(HEADER_TOTAL)}</span>
+								</th>
+								<td align="right">
+									${record.total}
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+      <#if record.custbodyvisiblemessage?has_content>
+				<p class="label">
+					<#if dunninglang == "CAT">
+							Informació addicional
+                    <#elseif dunninglang == "Italian">Informazioni aggiuntive
+					<#else>
+							Información Adicional
+					</#if>
+				</p>
+				<p class="fontRegular">
+					${record.custbodyvisiblemessage}
+				</p>
+			</#if>
+			<pbr header="nlheader" header-height="100px" footer="nlfooter" footer-height="${footerHeight}" padding="0.3in 0.5in 0.4in 0.5in" size="A4" />
+			<#if dunninglang != "CAT">
+				<!-- TERMS AND CONDITIONS: ESP-CASTELLANO /-->
+				<p class="body pageBrakeBefore">
+					<span style="font-size: 8pt;">
+						<span class="titleSmall">
+							<strong>
+                              <#if dunninglang == "Italian">Termini e Condizioni
+                    		  <#else>Términos y condiciones
+                              </#if>
+                             </strong>
+						</span>
+					</span>
+                  ${record.custpage_su_terms}
+				</p>
+
+                	 ${record.custpage_su_data_protection}
+
+
+			<#else>
+				<!-- TERMS AND CONDITIONS: CATALAN /-->
+				<p class="body pageBrakeBefore">
+					<span style="font-size: 8pt;">
+						<span class="titleSmall">
+							<strong>Termes i condicions</strong>
+						</span>
+						<br/>
+						<br/>
+						El signant se subscriu a les condicions específiques següents:
+						<br/>
+						<br/>
+						<u>FORMA DE COMPRA</u>:
+						<br/>
+						<br/>
+						${record.custbody_inn_forma_compra}
+						<br/>
+						<br/>
+						<u>TERMES DE PAGAMENT</u>:
+						<br/>
+						<br/>
+						<#if isTrue(record.custbody_inn_forma_compra.custrecord_inn_es_prescripcion)>
+							La firma del present pressupost per part del client no obliga el pagament del mateix. En el seu lloc, el compromís del client queda limitat a proporcionar a les famílies les dades necessàries perquè realitzin la compra dels materials a establiments de venta al públic. Així mateix, amb l'acceptació del present document, el client queda informat que els preus poden patir increments degut als marges aplicats pels distribuïdors.
+						<#elseif isTrue(record.custbody_inn_forma_compra == webSale)>
+							La firma del present pressupost per part del client no obliga el pagament del mateix. En el seu lloc, el compromís del client queda limitat a proporcionar a les famílies els fulls de compra que Innovamat facilitarà al centre en el seu temps i forma. Aquests fulls de compra inclouran les dades necessàries perquè les famílies puguin realitzar la compra dels materials mitjançant la plataforma de pagaments web. Així mateix, amb l'acceptació del present document, el client queda informat que els preus poden patir increments de fins el 2% derivats de les comissions de la passarel·la de pagaments.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSale)>
+							Aquest document és un pressupost de compra directa. Innovamat emetrà la factura un cop s'hagin entregat els materials a l'adreça d'enviament especificada a l'encapçalament. El venciment de la mateixa serà de 30 dies a comptar desde la data d'emissió.
+						<#else>
+							${record.custbody_alf_mop}
+						</#if>
+						<br/>
+						<br/>
+						<u>ENTREGA DE PRODUCTES</u>:
+						<br/>
+						<br/>
+						<#if isTrue(record.custbody_inn_forma_compra.custrecord_inn_es_prescripcion)>
+							Innovamat Education S.L. entregarà els materials dels producte inclosos en aquest pressupost als establiments de venta al públic entre el 29/08/${record.trandate?string["yyyy"]} i el 05/09/${record.trandate?string["yyyy"]}. Guardant-se el dret d'entregar-los al mes de setembre en cas de causes de força major.
+						<#elseif isTrue(record.custbody_inn_forma_compra == webSale)>
+							Innovamat Education S.L. entregarà els materials dels producte inclosos en aquest pressupost al centre educatiu entre el 29/08/2022 i el 05/09/2022. Guardant-se el dret d'entregar-los al mes de setembre en cas de causes de força major.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSale) || isTrue(record.custbody_inn_forma_compra == directSaleFour) || isTrue(record.custbody_inn_forma_compra == directSaleFive) || isTrue(record.custbody_inn_forma_compra == directSaleSix)>
+							En el cas de compra directa, Innovamat Education S.L. entregarà els materials dels productes adquirits al centre educatiu entre el 29/08/${record.trandate?string["yyyy"]} i el 05/09/${record.trandate?string["yyyy"]}. Reservant-se el dret d'entregar-ho durant el mes de setembre en cas de causes de força major.
+						</#if>
+						<br/>
+						<br/>
+						<u>CANVIS I DEVOLUCIONS</u>:
+						<br/>
+						<br/>
+						<#if isTrue(record.custbody_inn_forma_compra.custrecord_inn_es_prescripcion)>
+							Innovamat Education, SL, assumeix que les quantitats expressades en aquest document poden experimentar canvis a l'inici del curs escolar. Per això, accepta reduccions de fins al 10% en la quantitat del pressupost.
+							<br/>
+							<br/>
+							El termini per dur a terme aquestes modificacions serà de 30 dies naturals a partir de la data d'entrega dels productes adquirits. La sol·licitud d'aquestes modificacions s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>. A més, el centre podrà exercir el dret de renúncia en un termini màxim de set dies hàbils a partir de la data de signatura d'aquest document. La sol·licitud de renúncia s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>, i haurà d'anar acompanyada del número de pressupost o de factura corresponent. En cas de quantitats parcialment o totalment desemborsades per part del centre, Innovamat, SL,  es compromet a abonar-les en un termini màxim de 30 dies a partir de la recepció de la sol·licitud de renúncia mitjançant transferència al compte que el centre hagi indicat. En cas de devolució de llibres de paper, en l'exercici del dret de renúncia només s'acceptaran els productes que s'enviïn amb l'embolcall original, en estat nou i complet, i sempre que l'ús que se n'hagi fet hagi sigut conforme a la seva naturalesa. No s'acceptaran articles incomplets, modificats o deteriorats per part de l'usuari. Passat el termini mencionat, no s'admetran canvis ni devolucions, en conformitat amb el que estableix el Reial decret legislatiu 1/2007, de 16 de novembre, pel qual s'aprova el text refós de la Llei general per a la defensa dels consumidors i usuaris i altres lleis complementàries, que s'aplica íntegrament.
+						<#elseif record.custbody_inn_forma_compra == webSale>
+							Innovamat Education, SL, assumeix que les quantitats expressades en aquest document poden experimentar canvis a l'inici del curs escolar. Per això, accepta reduccions de fins al 10% en la quantitat del pressupost.
+							<br/>
+							<br/>
+							El termini per dur a terme aquestes modificacions serà de 30 dies naturals a partir de la data d'entrega dels productes adquirits. La sol·licitud d'aquestes modificacions s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>. A més, el centre podrà exercir el dret de renúncia en un termini màxim de set dies hàbils a partir de la data de signatura d'aquest document. La sol·licitud de renúncia s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>, i haurà d'anar acompanyada del número de pressupost o de factura corresponent. En cas de quantitats parcialment o totalment desemborsades per part del centre, Innovamat, SL,  es compromet a abonar-les en un termini màxim de 30 dies a partir de la recepció de la sol·licitud de renúncia mitjançant transferència al compte que el centre hagi indicat. En cas de devolució de llibres de paper, en l'exercici del dret de renúncia només s'acceptaran els productes que s'enviïn amb l'embolcall original, en estat nou i complet, i sempre que l'ús que se n'hagi fet hagi sigut conforme a la seva naturalesa. No s'acceptaran articles incomplets, modificats o deteriorats per part de l'usuari. Passat el termini mencionat, no s'admetran canvis ni devolucions, en conformitat amb el que estableix el Reial decret legislatiu 1/2007, de 16 de novembre, pel qual s'aprova el text refós de la Llei general per a la defensa dels consumidors i usuaris i altres lleis complementàries, que s'aplica íntegrament.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSale) || isTrue(record.custbody_inn_forma_compra == directSaleFour) || isTrue(record.custbody_inn_forma_compra == directSaleFive) || isTrue(record.custbody_inn_forma_compra == directSaleSix)>
+							Innovamat Education S.L. assumeix que les quantitats expressades en el present document poden patir variacions a l'inici del curs escolar. Per això, acceptarà reduccions de fins a un 10% en les quantitats sol·licitades a través del present pressupost.
+							<br/>
+							<br/>
+							El termini per dur a terme aquestes modificacions serà de 30 dies naturals a partir de la data d'entrega dels productes adquirits. La sol·licitud d'aquestes modificacions s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>. A més, el centre podrà exercir el dret de renúncia en un termini màxim de set dies hàbils a partir de la data de signatura d'aquest document. La sol·licitud de renúncia s'haurà de tramitar per correu electrònic a <a href="mailto:help@innovamat.com">help@innovamat.com</a>, i haurà d'anar acompanyada del número de pressupost o de factura corresponent. En cas de quantitats parcialment o totalment desemborsades per part del centre, Innovamat, SL,  es compromet a abonar-les en un termini màxim de 30 dies a partir de la recepció de la sol·licitud de renúncia mitjançant transferència al compte que el centre hagi indicat. En cas de devolució de llibres de paper, en l'exercici del dret de renúncia només s'acceptaran els productes que s'enviïn amb l'embolcall original, en estat nou i complet, i sempre que l'ús que se n'hagi fet hagi sigut conforme a la seva naturalesa. No s'acceptaran articles incomplets, modificats o deteriorats per part de l'usuari. Passat el termini mencionat, no s'admetran canvis ni devolucions, en conformitat amb el que estableix el Reial decret legislatiu 1/2007, de 16 de novembre, pel qual s'aprova el text refós de la Llei general per a la defensa dels consumidors i usuaris i altres lleis complementàries, que s'aplica íntegrament.
+						</#if>
+						<br/>
+						<br/>
+						<u>VIGÈNCIA</u>:
+						<br/>
+						<br/>
+						<#if isTrue(record.custbody_inn_forma_compra.custrecord_inn_es_prescripcion)>
+							Aquest document signat pel centre és un contracte de prescripció en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran d'un curs acadèmic, és a dir, des de setembre de 2022 fins al juny de 2023. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any següent a la signatura d'aquest document, l'any 2023, sempre que no s'hagi renovat el servei amb Innovamat.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSaleFour)>
+							Aquest document signat pel centre és un contracte de compra directa en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran de quatre cursos acadèmics, és a dir, des de setembre de 2022 fins al juny de 2026. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any de finalització del d'aquest contracte, l'any 2026, sempre que no s'hagi renovat el servei amb Innovamat.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSaleFive)>
+							Aquest document signat pel centre és un contracte de compra directa en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran de cinc cursos acadèmics, és a dir, des de setembre de 2022 fins al juny de 2027. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any de finalització del d'aquest contracte, l'any 2027, sempre que no s'hagi renovat el servei amb Innovamat.
+						<#elseif isTrue(record.custbody_inn_forma_compra == directSaleSix)>
+							Aquest document signat pel centre és un contracte de compra directa en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran de sis cursos acadèmics, és a dir, des de setembre de 2022 fins al juny de 2028. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any de finalització del d'aquest contracte, l'any 2028, sempre que no s'hagi renovat el servei amb Innovamat.
+						<#elseif record.custbody_inn_forma_compra == webSale>
+						Aquest document signat pel centre és un contracte de prescripció en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran d'un curs acadèmic, és a dir, des de setembre de 2022 fins al juny de 2023. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any següent a la signatura d'aquest document, l'any 2023, sempre que no s'hagi renovat el servei amb Innovamat.
+						<#elseif record.custbody_inn_forma_compra == directSale>
+							Aquest document signat pel centre és un contracte de compra directa en els termes i quantitats reflectits. Aquest contracte entra en vigor en el moment de la signatura i roman vigent fins que s'acabin els serveis pactats, que seran d'un curs acadèmic, és a dir, des de setembre de 2022 fins al juny de 2023. Les guies didàctiques incloses en el paquet acordat són un producte d'Innovamat, cedides al centre de manera temporal als mers efectes de complementar l'ús dels productes adquirits. En aquest sentit, el centre reconeix que la propietat de les guies didàctiques és d'Innovamat i es compromet a respectar la propietat intel·lectual d'aquestes i a retornar-les entre el 30 de juny i el 15 de juliol (tots dos inclosos) de l'any següent a la signatura d'aquest document, l'any 2023, sempre que no s'hagi renovat el servei amb Innovamat.
+						</#if>
+						<br/>
+						<br/>
+					</span>
+				</p>
+				<!--<p class="body pageBrakeBefore">
+					<span style="font-size: 8pt;">-->
+                      <table class="body pageBrakeBefore">
+                          <tr>
+                      	<td class="first-column">
+						<span class="titleSmall">
+							<strong>Protecció de dades</strong>
+						</span>
+						<br/>
+						<br/>
+						Informem que des de l'acceptació del pressupost, el centre actua com a RESPONSABLE de TRACTAMENT, i és l'única responsable de demanar autorització de tractament de dades personals dels menors als seus representants legals (progenitors o tutors legals). Innovamat Education, SL, actua com a Encarregat de tractament firmant amb el centre, el contracte oportú, i queda exempt de qualsevol responsabilitat davant la falta de diligència per part del centre en el tractament de dades personals de menors i l'aplicació de mesures de seguretat pertinents per a la seva protecció.
+						<br/>
+						<br/>
+						El centre signant del pressupost, les dades de la qual apareixen a l'inici del document com a RESPONSABLE de TRACTAMENT, i Innovamat Education, SL,  com a ENCARREGADA DE TRACTAMENT, reconeixen tenir capacitat legal necessària per contractar i subscriure aquest contracte, de conformitat amb l'article 28 del Reglament (UE) 2016/679, de 27 d'abril de 2016, del Parlament Europeu i del Consell relatiu a la protecció de les persones físiques en el que respecta al tractament de les seves dades personals i a la lliure circulació d'aquestes.
+						<br/>
+						<br/>
+						Al mateix temps, l'informem que les dades d'aquest document estan incorporades a l'arxiu de clients el responsable del qual és Innovamat Education, SL, emissora de la factura. En qualsevol moment es podran exercir els drets d'accés, rectificació, oposició, limitació i, si s'escau, portabilitat o cancel·lació, comunicant-ho per escrit i indicat les dades personals a l'adreça de correu electrònic rgpd@innovamat.es o a l'adreça postal Avinguda de la Generalitat, 216, 4t 3a, 08174 Sant Cugat del Vallès, Barcelona, indicant com a assumpte «RGPD, Drets afectat» i adjuntant una fotocòpia del documento de identidad o qualsevol mitjà anàleg en dret, tal com indica la llei. Pot accedir a més informació a través de l'enllaç següent: <a href="https://innovamat.com/politica-de-privacitat/">https://innovamat.com/politica-de-privacitat/</a>
+						<br/>
+						<br/>
+						<strong>1. Objecte de tractament</strong>
+						<br/>
+						<br/>
+						Mitjançant el present acord s'habilita a l'encarregat de tractament a tractar per compte del responsable del tractament, les dades de caràcter personal necessàries per a la prestació del servei.
+						<br/>
+						<br/>
+						Les finalitats concretes per a les quals s'encarrega aquest tractament és l'accés a la plataforma digital de recursos i materials didàctics per part de professorat i alumnes de les escoles. Les dades que es generin en utilitzar Innovamat, seran analitzades per millorar l'eina educativa i obtenir informació de l'ús d'aquesta.
+            <br/>
+						<br/>
+						<strong>2. Identificació de la informació afectada</strong>
+						<br/>
+						<br/>
+						Per a l'execució de la prestació derivada del compliment de l'objecte d'aquest d'encàrrec, el Responsable de tractament  posa a disposició de l'Encarregat de tractament la informació següent:
+						<br/>
+						<br/>
+						En el cas dels alumnes: nom i cognom, curs i classe, escola, edat i fotografia,  correu electrònic.
+						<br/>
+						<br/>
+						En el cas dels professors: nom i cognom, correu electrònic.
+						<br/>
+						<br/>
+						En el cas dels pares, mares o tutors legals: nom i cognoms, correu electrònic.
+						<br/>
+						<br/>
+						<strong>3. Obligacions del Responsable de Tractament</strong>
+						<br/>
+						<br/>
+						El Responsable declara que té la capacitat legal necessària per encarregar el tractament de les dades a tercers, que observa els drets dels titulars de les dades i que, en qualsevol cas, no implicarà a l'Encarregat de Tractament en possibles reclamacions dels titulars de les dades emanades de les seves exclusives responsabilitats.
+						<br/>
+						<br/>
+						Els centres educatius públics que ho necessitin hauran de sol·licitar autorització i supervisió a la Conselleria d'Educació, o l'anàleg de la seva Comunitat Autònoma, per a l'ús d'aplicacions i plataformes educatives, i hauran de vetllar per assegurar-ne l'aprovació, eximint de responsabilitat a l'Encarregat de Tractament de possibles reclamacions de tercers en referència a aquest assumpte.
+						<br/>
+						<br/>
+						El Responsable de Tractament s'obliga a:
+						<br/>
+						<br/>
+						a. Entregar a l'Encarregat les dades a les quals es refereix la clàusula 2 d'aquest document.
+						<br/>
+						<br/>
+						b. Fer una anàlisi dels possibles riscos derivats del tractament per determinar les mesures de seguretat apropiades per garantir la seguretat de la informació tractada i els drets i llibertats dels interessats i, si es determinés que hi ha riscos, fer una avaluació d'impacte per procedir en la implementació de mesures adequades per evitar-los o mitigar-los.
+						<br/>
+						<br/>
+
+						c. Fer les consultes prèvies que correspongui.
+						<br/>
+						<br/>
+						d. Vetllar, de manera prèvia i durant tot el tractament, pel compliment del RGPD per part de l'Encarregat.
+						<br/>
+						<br/>
+						e. Supervisar el tractament, incloses les inspeccions i auditories.
+
+                        </td>
+                        <td class="second-column">
+						<strong>4. Obligacions de l'Encarregat de Tractament</strong>
+						<br/>
+						<br/>
+						L'Encarregat de tractament i tot el seu personal està obligat a:
+						<br/>
+						<br/>
+						a. Fer ús de les dades personals objecte de tractament o les que reculli per a la seva inclusió, només per a la finalitat d'aquest encàrrec. En cap cas podrà fer-ne ús per a fins propis.
+						<br/>
+						<br/>
+						b. Tractar les dades d'acord amb les instruccions del Responsable de tractament. Si l'Encarregat del tractament considera que alguna de les instruccions infringeix el RGPD o qualsevol altra disposició en matèria de protecció de dades de la Unió o dels estats membres, l'Encarregat ha d'informar immediatament al Responsable.
+						<br/>
+						<br/>
+						c. Dur per escrit un registre de totes les categories d'activitats de tractament efectuades per compte del Responsable (quan escaigui), que contingui:
+						<br/>
+						<br/>
+						1. El nom i les dades de contacte de l'Encarregat i de cada Responsable per compte del qual actuï l'Encarregat i, si escau, dels respectius representants i del delegat de protecció de dades (si és procedent).
+						<br/>
+						<br/>
+						2. Les categories de tractaments efectuats per compte de cada responsable.
+						<br/>
+						<br/>
+						3. Les transferències de dades personals, si es fan, a un tercer país o organització internacional, inclosa la identificació d'aquest tercer país o organització internacional i, en cas de les transferències indicades a l'article 49 apartat 1, segon paràgraf del RGPD, la documentació de garanties adequades.
+						<br/>
+						<br/>
+						4. Una descripció general de les mesures de seguretat tècniques i organitzatives relatives a:
+						<br/>
+						<br/>
+						i. La pseudonimització i el xifratge de dades personals.
+						<br/>
+						<br/>
+						ii. La capacitat de garantir la confidencialitat, integritat, disponibilitat i resiliència permanents dels sistemes i serveis de tractament.
+						<br/>
+						<br/>
+						iii.  La capacitat de restaurar la disponibilitat i l'accés a les dades personals de manera ràpida, en cas d'incident físic o tècnic.
+						<br/>
+						<br/>
+						iv. Els processos de verificació, avaluació i valorització regulars de l'eficàcia de les mesures tècniques i organitzatives per garantir la seguretat del tractament.
+						<br/>
+						<br/>
+						d. No comunicar les dades a terceres persones, excepte que es compti amb l'autorització expressa del Responsable del tractament, en els supòsits legalment admissibles.
+						<br/>
+						<br/>
+						L'Encarregat pot comunicar les dades a altres Encarregats del tractament del mateix Responsable, d'acord amb les instruccions del Responsable. En aquest cas, el Responsable haurà d'identificar, de forma prèvia i per escrit, l'entitat a la qual se li han de comunicar les dades, les dades a comunicar i les mesures de seguretat que s'han d'aplicar per procedir a la comunicació.
+						<br/>
+						<br/>
+						El Responsable autoritza expressament a l'Encarregat de tractament a comunicar les dades generades durant l'ús d'Innovamat (degudament dissociades i anonimitzades) a centres d'investigació amb l'única finalitat de dur a terme investigació científica relacionada amb l'educació, i mai amb finalitats lucratives.
+						<br/>
+						<br/>
+						Si l'Encarregat ha de transferir dades personals a un tercer país o a una organització internacional, en virtut del Dret de la Unió o dels estats membres que els sigui aplicable, haurà d'informar el Responsable d'aquesta exigència legal de manera prèvia, excepte que el dit Dret ho prohibeixi per raons importants d'interès públic.
+						<br/>
+						<br/>
+						e. No es pot subcontractar cap de les prestacions que formen part de l'objecte d'aquest contracte que comporti el tractament de dades personals, excepte els serveis auxiliars necessaris per al funcionament normal dels serveis de l'Encarregat. En cas que sigui necessari subcontractar algun tractament, s'ha de comunicar prèviament i per escrit al Responsable, amb una antelació d'un mes, indicant els tractaments que es pretenen subcontractar i indicant de forma clara i inequívoca l'empresa subcontractista i les seves dades de contacte. La subcontractació es podrà dur a terme si el Responsable no manifesta oposició en el termini establert.
+						<br/>
+						<br/>
+						f. Mantenir el deure de secret, respecte a les dades de caràcter personal a les quals hagi tingut accés en virtut d'aquest encàrrec, fins i tot després que acabi el seu objecte.
+						<br/>
+						<br/>
+						g. Garantir que les persones autoritzades per tractar dades personals es comprometin, de manera expressa i per escrit, a respectar la confidencialitat i a complir les mesures de seguretat corresponents, de les quals cal informar-los de manera adequada.
+                              <br/>
+						<br/>
+                            </td>
+                        </tr>
+                          </table>
+                          <table class="body pageBrakeBefore">
+                          <tr>
+                      	<td class="first-column">
+
+						h. Mantenir a disposició del Responsable la documentació acreditativa del compliment de l'obligació establerta a l'apartat anterior.
+						<br/>
+						<br/>
+						i. Garantir la formació en matèria de protecció de dades personals de les persones autoritzades per tractar dades personals.
+						<br/>
+						<br/>
+						j. Quan les persones afectades exerceixin els drets d'accés, rectificació, supressió i oposició, limitació del tractament, portabilitat de dades i de no ser objecte de decisions individualitzades automatitzades davant de l'Encarregat de tractament, aquest ho ha de comunicar per correu electrònic a l'adreça que indiqui el Responsable de tractament. La comunicació s'ha de fer de manera immediata i en cap cas més enllà del dia feiner següent al de la recepció de la sol·licitud, juntament, si és necessari, amb altres informacions que puguin ser rellevants per resoldre la sol·licitud.
+						<br/>
+						<br/>
+						k. El Responsable de tractament ha de facilitar el dret d'informació en el moment de la recollida de les dades.
+						<br/>
+						<br/>
+						l. L'Encarregat del tractament ha de notificar el Responsable del tractament, sense dilació indeguda, i en qualsevol cas abans del termini de 48 h (marge per complir amb les 72 h de termini màxim establert), i a través del correu electrònic corresponent, les violacions de seguretat de les dades personals a càrrec seu de què tingui coneixement, juntament amb tota la informació rellevant per a la documentació i comunicació de la incidència. No caldrà la notificació quan sigui improbable que la dita violació de la seguretat constitueixi un risc per als drets i les llibertats de les persones físiques. A la notificació s'ha de facilitar, com a mínim, la informació següent:
+						<br/>
+						<br/>
+						1. Descripció de la naturalesa de la violació de la seguretat de les dades personals, inclòs, quan sigui possible, les categories i el nombre aproximat d'interessats afectats, i la categoria i el nombre aproximat de registres de dades personals afectats.
+						<br/>
+						<br/>
+						2. El nom i les dades de contacte del delegat de protecció de dades o d'un altre punt de contacte del qual es pugui obtenir més informació.
+						<br/>
+						<br/>
+						3. Descripció de les possibles conseqüències de la violació de la seguretat de les dades personals.
+						<br/>
+						<br/>
+						4. Descripció de les mesures adoptades o proposades per posar remei a la violació de la seguretat de les dades personals, incloent-hi, si escau, les mesures adoptades per mitigar possibles efectes negatius.
+						<br/>
+						<br/>
+						Si no és possible facilitar la informació simultàniament, i en la mesura en què no ho sigui, la informació s'ha de facilitar de manera gradual sense dilació indeguda.
+						<br/>
+						<br/>
+						Correspon a l'Encarregat de tractament, a petició del Responsable del tractament, comunicar les violacions de la seguretat de les dades a l'Autoritat de protecció de dades i, en cas que correspongui, als interessats. La comunicació ha de contenir, com a mínim, la informació següent:
+						<br/>
+						<br/>
+						1. Descripció de la naturalesa de la violació de la seguretat de les dades personals, inclòs, quan sigui possible, les categories i el nombre aproximat d'interessats afectats, i la categoria i el nombre aproximat de registres de dades personals afectats.
+                            </td>
+                            <td class="second-column">
+						2. El nom i les dades de contacte del delegat de protecció de dades o d'un altre punt de contacte del qual es pugui obtenir més informació.
+						<br/>
+						<br/>
+						3. Descripció de les possibles conseqüències de la violació de la seguretat de les dades personals.
+						<br/>
+						<br/>
+						4. Descripció de les mesures adoptades o proposades per posar remei a la violació de la seguretat de les dades personals, incloent-hi, si escau, les mesures adoptades per mitigar possibles efectes negatius.
+						<br/>
+						<br/>
+						Si no és possible facilitar la informació simultàniament, i en la mesura en què no ho sigui, la informació s'ha de facilitar de manera gradual sense dilació indeguda.
+						<br/>
+						<br/>
+						m. Donar suport al Responsable del tractament en les avaluacions d'impacte relatives a la protecció de dades, quan escaigui.
+						<br/>
+						<br/>
+						n. Donar suport al Responsable de tractament en les consultes prèvies a l'autoritat de control, quan escaigui.
+						<br/>
+						<br/>
+						o. Posar a disposició del Responsable tota la informació necessària per demostrar el compliment de les seves obligacions, així com per dur a terme les auditories o les inspeccions que faci el Responsable o algun altre auditor autoritzat per ell.
+						<br/>
+						<br/>
+						p. Implantar les mesures de seguretat tècniques i organitzatives necessàries per garantir la seguretat de les dades tractades.
+						<br/>
+						<br/>
+						En qualsevol cas, ha d'implantar mecanismes per:
+						<br/>
+						<br/>
+						1. Garantir la confidencialitat, integritat, disponibilitat i resiliència permanents dels sistemes i serveis de tractament.
+						<br/>
+						<br/>
+						2. Restaurar la disponibilitat i l'accés a les dades personals de manera ràpida, en cas d'incident físic o tècnic.
+						<br/>
+						<br/>
+						3. Verificar, avaluar i valorar, de forma regular, l'eficàcia de les mesures tècniques i organitzatives implantades per garantir la seguretat del tractament.
+						<br/>
+						<br/>
+						4. Pseudonimitzar i xifrar les dades personals, si escau.
+						<br/>
+						<br/>
+						q. Designar un delegat de protecció de dades i comunicar-ne la identitat i les dades de contacte al Responsable, si és procedent.
+						<br/>
+						<br/>
+						r. En cas que acabi la prestació del servei, respecte a les dades, l'Encarregat ha de: retornar al Responsable les dades de caràcter personal i, si escau, els suports on constin, un cop complerta la prestació, conforme i segons les normes sectorials d'aplicació. L'Encarregat pot conservar una còpia, amb les dades degudament bloquejades, mentre se'n puguin derivar responsabilitats de l'execució de la prestació.
+						<br/>
+						<br/>
+						<strong>5. Legislació aplicable</strong>
+						<br/>
+						<br/>
+						Totes dues parts renuncien expressament al fur que per llei els pugui correspondre, sotmetent-se a la jurisdicció dels Jutjats i Tribunals de Barcelona, per a la resolució de les controvèrsies que sorgeixin amb motiu de la interpretació o execució d'aquest contracte.
+                            </td>
+                            </tr>
+                          </table>
+						<!-- END TERMS AND CONDITIONS: CATALAN /-->
+					<!--</span>
+				</p>-->
+			</#if>
+			<p class="body pageBrakeBefore">
+				<#if dunninglang == "CAT">
+					ACCEPTACIÓ: La persona firmant, en l'exercici de les facultats que l'estan conferides i amb plena capacitat legal, accepta subscriure's a les condicions específiques del present contracte.
+                  	<br/>
+					<br/>
+					<br/>
+					<br/>
+					Nom:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Cognoms:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Número identificación fiscal:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Càrrec:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Firma:
+                <#elseif dunninglang == "Italian">
+					<b>ACCETTAZIONE</b>: : Il sottoscritto, nell'esercizio dei poteri conferitigli e nella piena capacità giuridica, accetta di sottoscrivere le condizioni specifiche del presente documento.
+                  	<br/>
+					<br/>
+					<br/>
+					<br/>
+					Nome:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Cognome:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					CIE/CF:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Carica:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Firma:
+				<#else>
+					ACEPTACIÓN: La persona firmante, ejerciendo las facultades que le han sido conferidas y en plena capacidad legal, acepta suscribirse a las condiciones específicas del presente contrato.
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Nombre:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Apellidos:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Número identificación fiscal:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Cargo:
+					<br/>
+					<br/>
+					<br/>
+					<br/>
+					Firma:
+				</#if>
+			</p>
+		</body>
+	</pdf>
